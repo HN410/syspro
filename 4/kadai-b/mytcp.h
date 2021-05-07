@@ -6,6 +6,7 @@
 #define DEFAULT_PORT_CLIENT 8102
 #define BUFFER_SIZE 20
 #define LISTEN_LEN 10
+#define THREAD_N 10
 
 typedef struct {
     struct sockaddr addrP;

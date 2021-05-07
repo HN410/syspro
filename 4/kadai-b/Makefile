@@ -7,6 +7,9 @@ tcpechoserver: tcpechoserver.o mytcp.o mytcp.h
 tcpechoserver1: tcpechoserver1.o mytcp.o mytcp.h
 	gcc -Wall -pthread tcpechoserver1.o mytcp.o -o tcpechoserver1
 
+tcpechoserver1G: tcpechoserver1.o mytcp.o mytcp.h
+	gcc -g -Wall -pthread tcpechoserver1.o mytcp.o -o tcpechoserver1
+
 tcpechoserver2: tcpechoserver2.o mytcp.o mytcp.h
 	gcc -Wall -pthread tcpechoserver2.o mytcp.o -o tcpechoserver2
 
