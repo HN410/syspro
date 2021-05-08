@@ -7,6 +7,7 @@
 #define BUFFER_SIZE 20
 #define LISTEN_LEN 10
 #define THREAD_N 10
+#define EVENT_N 10
 
 typedef struct {
     struct sockaddr addrP;
@@ -16,4 +17,6 @@ typedef struct {
 
 int sendClient(u_short, struct in_addr, FILE *);
 int receiveServer(u_short , int, int, struct sockaddr_in *);
+int receiveServerEpoll(u_short , int, int, struct sockaddr_in *);
+
 #endif

@@ -28,4 +28,4 @@ tcpechoserver2.o: tcpechoserver2.c
 
 
 clean: 
-	rm mytcp.o tcpechoclient tcpechoclient.o tcpechoserver tcpechoserver.o
+	rm mytcp.o tcpechoclient tcpechoclient.o tcpechoserver1 tcpechoserver1.o tcpechoserver2 tcpechoserver2.o
