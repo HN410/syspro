@@ -15,7 +15,7 @@ int main(int argc, char *argv[], char *envp[]){
     job = parse_line(input);
 
     if((pid = fork()) == 0){
-        myExec(job, 0);
+        myExec(job, 0, envp);
         printf("Error: Failed to exec the program.");
         exit(1);        
     }else {
