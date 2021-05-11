@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <wait.h>
 #include <stdlib.h>
 #include "parser/parse.h"
+#include "exec.h"
 
 
 #define INPUT_SIZE 100
