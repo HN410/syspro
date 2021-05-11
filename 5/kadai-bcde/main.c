@@ -1,19 +1,21 @@
 #include <stdio.h>
-#include <unistd.h>
 #include <wait.h>
 #include <stdlib.h>
+#include "parser/parse.h"
+
+
+#define INPUT_SIZE 100
+
 
 int main(int argc, char *argv[], char *envp[]){
     pid_t pid;
-    if(argc < 2){
-        printf("Error: Too few arguments.");
-        exit(1);
-    }
+    job *job;
+    char input[INPUT_SIZE];
+    get_line(input, INPUT_SIZE -1);
+    job = parse_line(input);
+
     if((pid = fork()) == 0){
-        char ** arg;
-        if(argc > 3) arg = &argv[2];
-        else arg = NULL;
-        execve(argv[1], arg, envp);
+        myExec(job, 0);
         printf("Error: Failed to exec the program.");
         exit(1);        
     }else {
