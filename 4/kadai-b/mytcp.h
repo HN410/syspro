@@ -16,7 +16,6 @@ typedef struct {
 }ReceiveData;
 
 int sendClient(u_short, struct in_addr, FILE *);
-int receiveServer(u_short , int, int, struct sockaddr_in *);
-int receiveServerEpoll(u_short , int, int, struct sockaddr_in *);
+int throughputServer(u_short , int, int, struct sockaddr_in *);
 
 #endif

@@ -9,6 +9,8 @@
 #define THREAD_N 10
 #define EVENT_N 10
 
+#define NANO 1000000000
+
 typedef struct {
     struct sockaddr addrP;
     int receivedN;

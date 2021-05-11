@@ -3,12 +3,18 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <memory.h>
+#include <time.h>
 #include <sys/epoll.h>
 #include "mytcp.h"
 
+// struct timespec {
+//   time_t tv_sec; /* Seconds.  */
+//   long tv_nsec;  /* Nanoseconds.  */
+// };
+
 void sendTCP(ReceiveData, int);
-void tcpEcho(int);
+void sendAcc(int);
+double getLatency(int);
 
 int sendClient(u_short port, struct in_addr in_addr, FILE *fp){
     //port, ip, 入力ストリームを受け取ってそのまま送信
@@ -28,6 +34,8 @@ int sendClient(u_short port, struct in_addr in_addr, FILE *fp){
         exit(1);
     }
     printf("connect\n");
+
+
 
     int endFlag0 = 1;
     char receiveBuf[BUFFER_SIZE];
@@ -97,16 +105,14 @@ int getListenFd(u_short port){
     return socketFd;
 }
 
-int receiveServer(u_short port, int isPrinting, int socketFdIn, struct sockaddr_in * sockAddrIn){
+int throughputServer(u_short port, int isPrinting, int socketFdIn, struct sockaddr_in * sockAddrIn){
     int socketFd = getListenFd(port);
-    pthread_t pthreadList[THREAD_N]; 
-    tcpEcho(socketFd);
+    sendAcc(socketFd);
     close(socketFd);
-
 }
 
 
-void tcpEcho(int arg){
+void sendAcc(int arg){
     int oldSocket = arg;
     struct sockaddr addr;
     socklen_t socklen = sizeof(struct sockaddr);
@@ -145,4 +151,38 @@ void tcpEcho(int arg){
         }
     }
     close(socket);
+}
+
+
+double getLatency(int socketFd){
+    clockid_t clk_id = CLOCK_REALTIME;
+    struct timespec t1a, t1b;
+    char buf[1] = "a";
+
+    int readSize = 1;
+    clock_gettime( clk_id, &t1a);
+    while(readSize){
+            // printf("%s", buf);
+            int writeSize = write(socketFd, buf,  readSize);
+            readSize -= writeSize;
+            if(writeSize == -1){
+                perror("Error: Failed to write.\n");
+                close(socket);
+                exit(1);
+            }
+    }
+    int rContFlag = 1;
+    while(rContFlag){
+        int readSize = read(socketFd, buf, 1);
+        if(readSize == -1){
+            perror("Error: Failed to read.\n");
+            close(socket);
+            exit(1);
+        }else if(buf[0] == 'a'){
+            rContFlag = 0;
+        }
+    }
+    clock_gettime(clk_id, &t1b);
+    double res = (double) ((t1b.tv_sec - t1a.tv_sec) * NANO ) + (double )(t1b.tv_nsec - t1a.tv_nsec);
+    
 }
