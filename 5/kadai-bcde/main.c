@@ -6,6 +6,7 @@
 #include "exec.h"
 
 
+
 #define INPUT_SIZE 100
 
 int getNewProcessN(job *);
@@ -22,27 +23,28 @@ int main(int argc, char *argv[], char *envp[]){
         int newProcessN = getNewProcessN(job);
         int pid[newProcessN];
         int oldPipe[2];
+        pipe(oldPipe);
 
         for(int i = 0 ; i < newProcessN ; i ++){
             int newPipe[2];
             pipe(newPipe);
             pid[i] = fork();
             if(pid[i] == 0){
-                close(newPipe[0]);
-                close(oldPipe[1]);
 
-                if(i != newProcessN-1) dup2(newPipe[1], 1);
-                else close(newPipe[1]);
-                if(i == 0) close(oldPipe[0]);
-                else dup2(oldPipe[0], 0);
+                childPipeHandle(oldPipe, newPipe, process, i, newProcessN);
 
                 myExec(process, i, envp);
                 printf("Error: Failed to exec the program.");
                 exit(1);        
             }
-            if(i != 0){
-                close(oldPipe[0]);
-                close(oldPipe[1]);
+            close(oldPipe[0]);
+            if(process->input_redirection != NULL){
+                inputRedirect(oldPipe[1], process);
+            }
+            close(oldPipe[1]);
+
+            if(process->output_redirection != NULL){
+                outputRedirect(newPipe[0], process);
             }
             oldPipe[0] = newPipe[0];
             oldPipe[1] = newPipe[1];
