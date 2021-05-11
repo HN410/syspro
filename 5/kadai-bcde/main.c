@@ -12,7 +12,6 @@
 int getNewProcessN(job *);
 
 int main(int argc, char *argv[], char *envp[]){
-    pid_t pid;
     job *job;
     char input[INPUT_SIZE];
     get_line(input, INPUT_SIZE -1);
@@ -23,11 +22,17 @@ int main(int argc, char *argv[], char *envp[]){
         int newProcessN = getNewProcessN(job);
         int pid[newProcessN];
         int oldPipe[2];
-        pipe(oldPipe);
+        if(pipe(oldPipe) < 0) {
+            perror("pipe(): ");
+            exit(1);
+        };
 
         for(int i = 0 ; i < newProcessN ; i ++){
             int newPipe[2];
-            pipe(newPipe);
+            if(pipe(newPipe) < 0){
+                perror("pipe(): ");
+                exit(1);
+            };
             pid[i] = fork();
             if(pid[i] == 0){
 

@@ -10,15 +10,15 @@
 
 
 
-int mycpEx(int option, char *s, char *t, int fd){
+int mycpEx(int option, char *s, char *t, int fd, int isAppend){
 //option source, target
 //NORMAL_COPY: file to file
 //FD TO FILE : file descripter to file
 
     struct statvfs bufS = {0};
     ssize_t readSize, writeSize;
-    char *source;
-    char *target;
+    char *source = NULL;
+    char *target =  NULL;
     int fdS;
     int fdT;
 
@@ -28,10 +28,17 @@ int mycpEx(int option, char *s, char *t, int fd){
         source = s;
         target = t;
         fdS =  open(source, O_RDONLY );
-        fdT =  open(target, O_CREAT | O_RDWR | O_TRUNC, 0666);
+        if(isAppend)
+          fdT =  open(target, O_CREAT | O_RDWR | O_APPEND, 0666);
+        else 
+          fdT =  open(target, O_CREAT | O_RDWR | O_TRUNC, 0666);
     }else if (option == COPY_FD_TO_FILE){
         target = t;
-        fdT =  open(target, O_CREAT | O_RDWR | O_TRUNC, 0666);
+        if(isAppend)
+          fdT =  open(target, O_CREAT | O_RDWR | O_APPEND, 0666);
+        else 
+          fdT =  open(target, O_CREAT | O_RDWR | O_TRUNC, 0666);
+        
         fdS = fd;
     }else {
         source = s;
