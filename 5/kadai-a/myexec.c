@@ -11,7 +11,7 @@ int main(int argc, char *argv[], char *envp[]){
     }
     if((pid = fork()) == 0){
         char ** arg;
-        if(argc > 3) arg = &argv[2];
+        if(argc > 3) arg = argv+1;
         else arg = NULL;
         execve(argv[1], arg, envp);
         printf("Error: Failed to exec the program.");
