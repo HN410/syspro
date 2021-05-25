@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "parser/parse.h"
 #include "exec.h"
+#include "util/job.h"
 
 
 
@@ -14,6 +15,10 @@ int getNewProcessN(job *);
 
 int main(int argc, char *argv[], char *envp[]){
     job *job;
+    BackProcessList *bpl = NULL;
+    BackProcessList **backProcessList = &bpl;
+    pid_t parentPID = 0;
+
     char input[INPUT_SIZE];
 
     //フォアグラウンドに変更したときにSIGTTOUが送られるので、それを無視
@@ -30,6 +35,11 @@ int main(int argc, char *argv[], char *envp[]){
         perror("Error: sigaction");
         exit(1);
     }
+    if(sigaction(SIGTTIN, &sigAction, NULL) == -1){
+        perror("Error: sigaction");
+        exit(1);
+    }
+    parentPID = getpid();
 
     while(1){
         get_line(input, INPUT_SIZE -1);
@@ -59,7 +69,6 @@ int main(int argc, char *argv[], char *envp[]){
                 };
                 pid[i] = fork();
                 if(pid[i] == 0){
-
                     childPipeHandle(oldPipe, newPipe, process, i, newProcessN);
 
                     myExec(process, i, envp);
@@ -67,15 +76,11 @@ int main(int argc, char *argv[], char *envp[]){
                     exit(1);        
                 }
 
-                //プロセスグループIDの設定、フォアグラウンドへ
+                //プロセスグループIDの設定、フォアグラウンド、バックグラウンドへ
                 int err = 0;
                 if(i==0){
                     gpid = pid[0];
                     err = setpgid(gpid, gpid);
-                    if(tcsetpgrp(STDOUT_FILENO, gpid) == -1){
-                        perror("Error: tcsetpgrp\n");
-                        exit(1);
-                    } 
                 }else{
                     err = setpgid((pid_t) pid[i], gpid);
                 }
@@ -85,6 +90,20 @@ int main(int argc, char *argv[], char *envp[]){
                     perror("Error: setgroup\n");
                     exit(1);
                 }
+                if(job->mode == FOREGROUND){
+
+                    if(tcsetpgrp(STDIN_FILENO, gpid ) == -1){
+                        perror("Error: tcsetpgrp\n");
+                        exit(1);
+                    }  
+                }else{
+
+                    if(tcsetpgrp(STDIN_FILENO, parentPID ) == -1){
+                        perror("Error: tcsetpgrp\n");
+                        exit(1);
+                    }  
+                }
+
 
                 //パイプ、リダイレクション処理
                 close(oldPipe[0]);
@@ -104,17 +123,28 @@ int main(int argc, char *argv[], char *envp[]){
             close(oldPipe[0]);
             close(oldPipe[1]);
 
-            for(int i = 0; i < newProcessN; i++){
-                int status;
-                waitpid((pid_t) pid[i], &status, WUNTRACED);
-            }   
+            if(job->mode == FOREGROUND){
+                for(int i = 0; i < newProcessN; i++){
+                    int status;
+                    waitpid((pid_t) pid[i], &status, WUNTRACED);
+                }   
+                //実行終了につきシェルをフォアグラウンドへ
+                if(tcsetpgrp(STDOUT_FILENO, getpid()) == -1){
+                    perror("Error: tcsetpgrp\n");
+                    exit(1);
+                }  
+                if(tcsetpgrp(STDIN_FILENO, getpid() ) == -1){
+                            perror("Error: tcsetpgrp\n");
+                            exit(1);
+                }  
+            }else{
+                addBackground(pid, newProcessN, backProcessList);
+            }
 
-            //実行終了につきシェルをフォアグラウンドへ
-            if(tcsetpgrp(STDOUT_FILENO, getpid()) == -1){
-                perror("Error: tcsetpgrp\n");
-                exit(1);
-            }  
+            checkBackProcess(backProcessList);
+
         }
+        free_job(job);
     }
     
     return 0;
