@@ -15,6 +15,7 @@
 void sendTCP(ReceiveData, int);
 void sendAcc(int);
 double getLatency(int);
+long getRTT(int, int);
 
 int sendClient(u_short port, struct in_addr in_addr, FILE *fp){
     //port, ip, 入力ストリームを受け取ってそのまま送信
@@ -107,7 +108,9 @@ int getListenFd(u_short port){
 
 int throughputServer(u_short port, int isPrinting, int socketFdIn, struct sockaddr_in * sockAddrIn){
     int socketFd = getListenFd(port);
-    sendAcc(socketFd);
+    while(1){
+        sendAcc(socketFd);
+    }
     close(socketFd);
 }
 
@@ -128,7 +131,7 @@ void sendAcc(int arg){
     while(rContFlag){
         int readSize = read(socket, buf, (int) BUFFER_SIZE);
         if(readSize == -1){
-            perror("Error: Failed to read.\n");
+            //perror("Error: Failed to read.\n");
             close(socket);
             exit(1);
         }else if(readSize == 0 || buf[readSize-1] == EOF){
@@ -143,6 +146,7 @@ void sendAcc(int arg){
             // printf("%s", buf);
             writeSize = write(socket, wStart,  readSize);
             readSize -= writeSize;
+            wStart += writeSize;
             if(writeSize == -1){
                 perror("Error: Failed to write.\n");
                 close(socket);
@@ -154,35 +158,81 @@ void sendAcc(int arg){
 }
 
 
-double getLatency(int socketFd){
+void printThroughput(int socketFd){
+    long timeSum = 0l;
+    long latency = getRTT(socketFd, 1);
+    timeSum += latency;
+
+    int itern = 0;
+    long throughputTimeSum = 0;
+    while(timeSum < 10 * (double) NANO){
+        itern ++;
+        long t = getRTT(socketFd, THROUGHPUT_SIZE);
+        throughputTimeSum += t - latency;
+        timeSum += t-latency;
+    }
+    long RTT = throughputTimeSum;
+    double throughput = (double ) ((long) THROUGHPUT_SIZE * 8 * itern) / (double) (RTT / NANO) / (MEGA) ;
+
+    printf("%d %.5f %.5f\n", THROUGHPUT_SIZE * itern, (float)timeSum / NANO, throughput);
+}
+
+
+long getRTT(int socketFd, int size){
     clockid_t clk_id = CLOCK_REALTIME;
     struct timespec t1a, t1b;
-    char buf[1] = "a";
+    char buf[BUFFER_SIZE];
 
-    int readSize = 1;
+    for(int i = 0; i < BUFFER_SIZE; i++){
+        buf[i] = 'a';
+    }
+
     clock_gettime( clk_id, &t1a);
-    while(readSize){
+    while(size){
             // printf("%s", buf);
-            int writeSize = write(socketFd, buf,  readSize);
-            readSize -= writeSize;
+            int size1;
+            if(size < BUFFER_SIZE) size1 = size;
+            else size1 = BUFFER_SIZE;
+            int writeSize = write(socketFd, buf,  size1);
+
+            size -= writeSize;
             if(writeSize == -1){
                 perror("Error: Failed to write.\n");
-                close(socket);
+                close(socketFd);
+                exit(1);
+            }
+            int readSize = read(socketFd, buf, writeSize);
+            if(readSize == -1){
+                perror("Error: Failed to read.\n");
+                close(socketFd);
                 exit(1);
             }
     }
-    int rContFlag = 1;
-    while(rContFlag){
-        int readSize = read(socketFd, buf, 1);
-        if(readSize == -1){
-            perror("Error: Failed to read.\n");
-            close(socket);
-            exit(1);
-        }else if(buf[0] == 'a'){
-            rContFlag = 0;
-        }
-    }
+
     clock_gettime(clk_id, &t1b);
-    double res = (double) ((t1b.tv_sec - t1a.tv_sec) * NANO ) + (double )(t1b.tv_nsec - t1a.tv_nsec);
+    long res = (long) ((t1b.tv_sec - t1a.tv_sec) * NANO ) + (long )(t1b.tv_nsec - t1a.tv_nsec);
+    return res;
     
+}
+
+void throughputClient(u_short port, struct in_addr in_addr){
+    //port, ip, 入力ストリームを受け取ってそのまま送信
+    struct sockaddr_in sockAddr;
+    sockAddr.sin_family = PF_INET;
+    sockAddr.sin_port= htons(port);
+    sockAddr.sin_addr= in_addr;
+    
+    int socketFd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(socketFd == -1){
+        printf("Error: socket()");
+    }
+
+    socklen_t clientLen = sizeof(sockAddr);   
+    if(connect(socketFd, (struct sockaddr *) &sockAddr, clientLen) < 0){
+        perror("connect: ");
+        exit(1);
+    }
+
+    printThroughput(socketFd);
+    return;
 }

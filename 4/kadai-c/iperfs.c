@@ -24,6 +24,6 @@ int receiveServerSet(int argc, char *port[]){
     }else{
         portN = atoi(port[1]);
     } 
-    receiveServer(portN, 1, -1, NULL);
+    throughputServer(portN, 1, -1, NULL);
     return 0;
 }

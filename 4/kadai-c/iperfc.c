@@ -27,7 +27,7 @@ int sendClientSet(int argc, char *argv[]){
         printf("Error: inet_aton");
         return 1;
     }
-    sendClient(port, in_addr, stdin);
+    throughputClient(port, in_addr);
     return 0;
     
 

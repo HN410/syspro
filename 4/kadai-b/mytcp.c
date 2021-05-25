@@ -183,6 +183,7 @@ int receiveServerEpoll(u_short port, int isPrinting, int socketFdIn, struct sock
                     // printf("%s", buf);
                     writeSize = write(events[i].data.fd, wStart,  readSize);
                     readSize -= writeSize;
+                    wStart += writeSize;
                     if(writeSize == -1){
                         perror("Error: Failed to write.\n");
                         close(events[i].data.fd);
@@ -237,6 +238,7 @@ void *tcpEcho(void * arg){
             // printf("%s", buf);
             writeSize = write(socket, wStart,  readSize);
             readSize -= writeSize;
+            wStart += writeSize;
             if(writeSize == -1){
                 perror("Error: Failed to write.\n");
                 close(socket);
