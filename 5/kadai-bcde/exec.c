@@ -1,14 +1,69 @@
-#include "parser/parse.h"
 #include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <stdlib.h>
 #include "util/mycp.h"
+#include "parser/parse.h"
+
+
+int checkExecutable(char *path, const char *pathBefore){
+    //ファイルが実行可能なら1, そうでなければ0
+    struct stat st;
+    char *programName;
+
+    if(pathBefore == NULL){
+        programName = calloc(strlen(path) + 1, sizeof(char));
+        strcpy(programName, path);
+    }else{
+        int programNameLen = strlen(pathBefore) + strlen(path) + 1;
+        programName = calloc(programNameLen + 1, sizeof(char));
+        strcpy(programName, pathBefore);
+        strcat(programName, "/");
+        strcat(programName, path);
+    }
+
+    if(stat(programName, &st)!= 0){
+        free(programName);
+        return 0;
+    }
+    if((st.st_mode & S_IFMT) == S_IFREG){
+        free(programName);
+        return 1;
+    }
+    free(programName);
+    return 0;
+
+}
 
 int myExec(process *p, int n, char **envp){
-
-
         process process = *p;
-        char * programName = process.program_name;
         char ** argList = process.argument_list;
-        execve(programName, argList, envp);
+        if(checkExecutable(p->program_name, NULL) != 0){
+            //絶対ファイルで実行可能
+            execve(p->program_name, argList, envp);
+            return 0;
+        }
+
+        char *pathNext = strtok(getenv("PATH"), ":");
+        while(pathNext != NULL){
+            //1は/の分
+            if(checkExecutable(p->program_name, pathNext) == 0){
+                pathNext = strtok(NULL, ":");
+                continue;
+            }
+            int programNameLen = strlen(pathNext) + strlen(p->program_name) + 1;
+            char programName[programNameLen];
+            strcpy(programName, pathNext);
+            strcat(programName, "/");
+            strcat(programName, p->program_name);
+
+            argList[0] = programName;
+            execve(programName, argList, envp);
+        }
+
+
         return 0;
 }
 
