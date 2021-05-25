@@ -27,6 +27,9 @@ int main(int argc, char *argv[], char *envp[]){
             int newProcessN = getNewProcessN(job);
             int pid[newProcessN];
             int oldPipe[2];
+            pid_t gpid = 0;
+
+
             if(pipe(oldPipe) < 0) {
                 perror("pipe(): ");
                 exit(1);
@@ -44,9 +47,24 @@ int main(int argc, char *argv[], char *envp[]){
                     childPipeHandle(oldPipe, newPipe, process, i, newProcessN);
 
                     myExec(process, i, envp);
-                    printf("Error: Failed to exec the program.");
+                    printf("Error: Failed to exec the program.\n");
                     exit(1);        
                 }
+
+                //プロセスグループIDの設定
+                int err = 0;
+                if(i==0){
+                    gpid = pid[0];
+                    err = setpgid(gpid, gpid);
+                }else{
+                    err = setpgid((pid_t) pid[i], gpid);
+                }
+                if(err  == -1){
+                    perror("Error: setgroup\n");
+                    exit(1);
+                }
+
+                //パイプ、リダイレクション処理
                 close(oldPipe[0]);
                 if(process->input_redirection != NULL){
                     inputRedirect(oldPipe[1], process);
