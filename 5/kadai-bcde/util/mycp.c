@@ -111,4 +111,6 @@ int mycpEx(int option, char *s, char *t, int fd, int isAppend){
         exit(1);
     }
 
+    return 0;
+
 }
