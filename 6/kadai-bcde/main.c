@@ -15,6 +15,22 @@ int getNewProcessN(job *);
 int main(int argc, char *argv[], char *envp[]){
     job *job;
     char input[INPUT_SIZE];
+
+    //フォアグラウンドに変更したときにSIGTTOUが送られるので、それを無視
+    struct sigaction sigAction;
+    memset((void *) &sigAction, 0, sizeof(struct sigaction));
+    sigAction.sa_handler = SIG_IGN;
+    sigAction.sa_flags = 0;
+    sigemptyset(&(sigAction.sa_mask));
+    if(sigaction(SIGINT, &sigAction, NULL) == -1){
+        perror("Error: sigaction");
+        exit(1);
+    }
+    if(sigaction(SIGTTOU, &sigAction, NULL) == -1){
+        perror("Error: sigaction");
+        exit(1);
+    }
+
     while(1){
         get_line(input, INPUT_SIZE -1);
         if(strcmp(input, "exit\n") == 0){
@@ -51,15 +67,21 @@ int main(int argc, char *argv[], char *envp[]){
                     exit(1);        
                 }
 
-                //プロセスグループIDの設定
+                //プロセスグループIDの設定、フォアグラウンドへ
                 int err = 0;
                 if(i==0){
                     gpid = pid[0];
                     err = setpgid(gpid, gpid);
+                    if(tcsetpgrp(STDOUT_FILENO, gpid) == -1){
+                        perror("Error: tcsetpgrp\n");
+                        exit(1);
+                    } 
                 }else{
                     err = setpgid((pid_t) pid[i], gpid);
                 }
                 if(err  == -1){
+                    printf("%d\n", getsid(gpid));
+                    printf("%d\n", getsid(0));
                     perror("Error: setgroup\n");
                     exit(1);
                 }
@@ -85,7 +107,13 @@ int main(int argc, char *argv[], char *envp[]){
             for(int i = 0; i < newProcessN; i++){
                 int status;
                 waitpid((pid_t) pid[i], &status, WUNTRACED);
-            }    
+            }   
+
+            //実行終了につきシェルをフォアグラウンドへ
+            if(tcsetpgrp(STDOUT_FILENO, getpid()) == -1){
+                perror("Error: tcsetpgrp\n");
+                exit(1);
+            }  
         }
     }
     
