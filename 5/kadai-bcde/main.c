@@ -69,6 +69,7 @@ int main(int argc, char *argv[], char *envp[]){
                 waitpid((pid_t) pid[i], &status, WUNTRACED);
             }    
         }
+        free_job(job);
     }
     
     return 0;
