@@ -13,4 +13,7 @@ typedef struct backProcessList{
 //バックグラウンドで実行中のジョブの管理などを行う
 void addBackground(int [], int, BackProcessList**);
 void checkBackProcess(BackProcessList **);
+void freeBackProcess(BackProcessList *);
+void addProcessList(BackProcessList **, BackProcessList **);
+void printBackProcessList(BackProcessList *);
 #endif

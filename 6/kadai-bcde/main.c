@@ -6,6 +6,7 @@
 #include "parser/parse.h"
 #include "exec.h"
 #include "util/job.h"
+#include "util/signal.h"
 
 
 
@@ -15,8 +16,12 @@ int getNewProcessN(job *);
 
 int main(int argc, char *argv[], char *envp[]){
     job *job;
-    BackProcessList *bpl = NULL;
-    BackProcessList **backProcessList = &bpl;
+    BackProcessList *bpl0 = NULL;
+    BackProcessList *bpl1 = NULL;
+    BackProcessList *bpl2 = NULL;
+    BackProcessList **backProcessList = &bpl0; //バックグラウンド実行
+    BackProcessList **pauseProcessList = &bpl1;; //中断中のプロセス
+    BackProcessList **nowProcessList = &bpl2;;   //現在のプロセス
     pid_t parentPID = 0;
 
     char input[INPUT_SIZE];
@@ -28,6 +33,10 @@ int main(int argc, char *argv[], char *envp[]){
     sigAction.sa_flags = 0;
     sigemptyset(&(sigAction.sa_mask));
     if(sigaction(SIGINT, &sigAction, NULL) == -1){
+        perror("Error: sigaction");
+        exit(1);
+    }
+    if(sigaction(SIGTSTP, &sigAction, NULL) == -1){
         perror("Error: sigaction");
         exit(1);
     }
@@ -45,6 +54,10 @@ int main(int argc, char *argv[], char *envp[]){
         get_line(input, INPUT_SIZE -1);
         if(strcmp(input, "exit\n") == 0){
             break;
+        }else if(strcmp(input, "bg\n") == 0){
+            bg(pauseProcessList);
+            printBackProcessList(*pauseProcessList);
+            continue;
         }
         job = parse_line(input);
 
@@ -69,6 +82,22 @@ int main(int argc, char *argv[], char *envp[]){
                 };
                 pid[i] = fork();
                 if(pid[i] == 0){
+                    if(i == 0){
+                        struct sigaction sigAction;
+                        memset((void *) &sigAction, 0, sizeof(struct sigaction));
+                        sigAction.sa_handler = SIG_DFL;
+                        sigAction.sa_flags = 0;
+                        sigemptyset(&(sigAction.sa_mask));
+                        if(sigaction(SIGINT, &sigAction, NULL) == -1){
+                            perror("Error: sigaction");
+                            exit(1);
+                        }
+                        sigAction.sa_handler = sigStop;
+                        if(sigaction(SIGTSTP, &sigAction, NULL) == -1){
+                            perror("Error: sigaction");
+                            exit(1);
+                        }
+                    }
                     childPipeHandle(oldPipe, newPipe, process, i, newProcessN);
 
                     myExec(process, i, envp);
@@ -104,7 +133,6 @@ int main(int argc, char *argv[], char *envp[]){
                     }  
                 }
 
-
                 //パイプ、リダイレクション処理
                 close(oldPipe[0]);
                 if(process->input_redirection != NULL){
@@ -124,10 +152,18 @@ int main(int argc, char *argv[], char *envp[]){
             close(oldPipe[1]);
 
             if(job->mode == FOREGROUND){
+                int stoppedFlag = 0; ///CtrlZで一時停止されたか
                 for(int i = 0; i < newProcessN; i++){
                     int status;
                     waitpid((pid_t) pid[i], &status, WUNTRACED);
+                    if(!WIFEXITED(status)){
+                        stoppedFlag = 1;
+                    }else{
+                        pid[i] = PROCESS_END;
+                    }  
                 }   
+                addBackground(pid, newProcessN, nowProcessList);
+
                 //実行終了につきシェルをフォアグラウンドへ
                 if(tcsetpgrp(STDOUT_FILENO, getpid()) == -1){
                     perror("Error: tcsetpgrp\n");
@@ -137,6 +173,15 @@ int main(int argc, char *argv[], char *envp[]){
                             perror("Error: tcsetpgrp\n");
                             exit(1);
                 }  
+                if(stoppedFlag){
+                    printBackProcessList(*nowProcessList);
+                    addProcessList(pauseProcessList, nowProcessList);
+                    //printBackProcessList(*pauseProcessList);
+                }else{
+                    freeBackProcess(*nowProcessList);                    
+                }
+                *nowProcessList = NULL;
+                
             }else{
                 addBackground(pid, newProcessN, backProcessList);
             }

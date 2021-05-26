@@ -74,3 +74,25 @@ void checkBackProcess(BackProcessList **backProcessList){
     }
 
 }
+
+void addProcessList(BackProcessList **bpl1, BackProcessList **bpl2){
+    //bpl1にbpl2を結合
+    if(*bpl1 == NULL){
+        *bpl1 = *bpl2;
+    }else{
+        BackProcessList *bp = *bpl1;
+        while(bp->next!= NULL) bp = bp->next;
+        (*bpl2)->previous = bp;
+        bp->next = (*bpl2);
+    }
+
+}
+
+void printBackProcessList(BackProcessList *bpl){
+    while(bpl != NULL){
+        printf(" %d\n", bpl->pids[0]);
+        printf(" %d\n", bpl->processN);
+        printf("---\n");
+        bpl = bpl->next;
+    }
+}
