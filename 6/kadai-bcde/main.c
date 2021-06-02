@@ -56,7 +56,6 @@ int main(int argc, char *argv[], char *envp[]){
             break;
         }else if(strcmp(input, "bg\n") == 0){
             bg(pauseProcessList);
-            printBackProcessList(*pauseProcessList);
             continue;
         }
         job = parse_line(input);
@@ -174,9 +173,7 @@ int main(int argc, char *argv[], char *envp[]){
                             exit(1);
                 }  
                 if(stoppedFlag){
-                    printBackProcessList(*nowProcessList);
                     addProcessList(pauseProcessList, nowProcessList);
-                    //printBackProcessList(*pauseProcessList);
                 }else{
                     freeBackProcess(*nowProcessList);                    
                 }
